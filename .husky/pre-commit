@@ -1,7 +1,6 @@
 #!/usr/bin/env sh
 . "$(dirname -- "$0")/_/husky.sh"
 
-pnpm run lint:hbs
-pnpm run lint:js
+pnpm run lint
 
 sh .github/jsonnet/pre-commit.sh

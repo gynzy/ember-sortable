@@ -200,10 +200,8 @@
       "uses": "pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320"
     - "name": "Run pnpm install"
       "run": "pnpm config set store-dir .pnpm-store && pnpm install"
-    - "name": "lint:hbs"
-      "run": "pnpm run lint:hbs"
-    - "name": "lint:js"
-      "run": "pnpm run lint:js"
+    - "name": "lint"
+      "run": "pnpm run lint"
     - "name": "build"
       "run": "pnpm run build"
     "timeout-minutes": 30

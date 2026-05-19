@@ -24,7 +24,7 @@
     "start": "ember serve",
     "test:ember": "ember test",
     "test:all": "ember try:each",
-    "lint": "yarn lint:hbs && yarn lint:js",
+    "lint": "pnpm run lint:hbs && pnpm run lint:js",
     "release": "release-it",
     "prepare": "husky"
   },
