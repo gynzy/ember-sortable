@@ -1,8 +1,8 @@
 # GENERATED with jsonnet - DO NOT EDIT MANUALLY
 "jobs":
-  "yarn-publish-preview":
+  "pnpm-publish-preview":
     "container":
-      "image": "mirror.gcr.io/node:22"
+      "image": "mirror.gcr.io/node:24"
     "permissions":
       "contents": "read"
       "packages": "write"
@@ -51,6 +51,7 @@
         echo "sshBinaryExists=false" >> $GITHUB_OUTPUT;
     - "if": "${{  ( steps.check-binaries.outputs.sshBinaryExists == 'true' && steps.check-binaries.outputs.gitBinaryExists == 'true' ) }}"
       "name": "Check out repository code via ssh"
+      "timeout-minutes": 10
       "uses": "actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd"
       "with":
         "ref": "${{ github.event.pull_request.head.sha }}"
@@ -58,6 +59,7 @@
         "submodules": "recursive"
     - "if": "${{  ( steps.check-binaries.outputs.sshBinaryExists == 'false' || steps.check-binaries.outputs.gitBinaryExists == 'false' ) }}"
       "name": "Check out repository code via https"
+      "timeout-minutes": 10
       "uses": "actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd"
       "with":
         "ref": "${{ github.event.pull_request.head.sha }}"
@@ -65,30 +67,31 @@
     - "name": "git safe directory"
       "run": "command -v git && git config --global --add safe.directory '*' || true"
     - "env":
-        "NPM_TOKEN": "${{ secrets.npm_token }}"
-      "name": "set gynzy npm_token"
+        "NODE_AUTH_TOKEN": "${{ secrets.GITHUB_TOKEN }}"
+      "name": "set github npm_token"
       "run": |
         cat <<EOF > .npmrc
-        @gynzy:registry=https://npm.gynzy.net/
-        "//npm.gynzy.net/:_authToken"="${NPM_TOKEN}"
+        @gynzy:registry=https://npm.pkg.github.com
+        //npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}
         public-hoist-pattern[]=@pulumi/pulumi
         EOF
-    - "env": {}
-      "name": "yarn"
-      "run": "yarn --cache-folder .yarncache --frozen-lockfile --prefer-offline || yarn --cache-folder .yarncache --frozen-lockfile --prefer-offline"
+    - "name": "Install pnpm tool"
+      "uses": "pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320"
+    - "name": "Run pnpm install"
+      "run": "pnpm config set store-dir .pnpm-store && pnpm install --frozen-lockfile"
     - "name": "check-version-bump"
       "uses": "del-systems/check-if-version-bumped@d5d13ffd75dc8aa9c2e1dca10d9bb27be10307b2"
       "with":
         "token": "${{ github.token }}"
     - "name": "build"
-      "run": "yarn build"
+      "run": "pnpm run build"
     - "env":
-        "NPM_TOKEN": "${{ secrets.npm_token }}"
-      "name": "set gynzy npm_token"
+        "NODE_AUTH_TOKEN": "${{ secrets.GITHUB_TOKEN }}"
+      "name": "set github npm_token"
       "run": |
         cat <<EOF > .npmrc
-        @gynzy:registry=https://npm.gynzy.net/
-        "//npm.gynzy.net/:_authToken"="${NPM_TOKEN}"
+        @gynzy:registry=https://npm.pkg.github.com
+        //npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}
         public-hoist-pattern[]=@pulumi/pulumi
         EOF
     - "env":
@@ -99,7 +102,7 @@
         
         cp package.json package.json.bak;
         
-        VERSION=$(yarn version --non-interactive 2>/dev/null | grep "Current version" | grep -o -P '[0-9a-zA-Z_.-]+$' );
+        VERSION=$(node -p "require(\"./package.json\").version");
         if [[ ! -z "${PR_NUMBER}" ]]; then
           echo "Setting tag/version for pr build.";
           TAG=pr-$PR_NUMBER;
@@ -120,7 +123,8 @@
           exit 1
         fi
         
-        yarn publish --non-interactive --no-git-tag-version --tag "$TAG" --new-version "$PUBLISHVERSION";
+        npm version --no-git-tag-version --allow-same-version "$PUBLISHVERSION";
+        pnpm publish --no-git-checks --tag "$TAG";
         
         mv package.json.bak package.json;
         ';

@@ -14,9 +14,10 @@ local images = import 'images.jsonnet';
    * @param {string} [ref=null] - Specific git ref/branch/tag to checkout
    * @param {boolean} [preferSshClone=true] - Whether to attempt SSH clone first
    * @param {boolean} [includeSubmodules=true] - Whether to checkout git submodules
+   * @param {number} [cloneTimeout=10] - Timeout for git clone operation (in minutes)
    * @returns {steps} - GitHub Actions steps for repository checkout
    */
-  checkout(ifClause=null, fullClone=false, ref=null, preferSshClone=true, includeSubmodules=true)::
+  checkout(ifClause=null, fullClone=false, ref=null, preferSshClone=true, includeSubmodules=true, cloneTimeout=10)::
     local with =
       (if fullClone then { 'fetch-depth': 0 } else {}) +
       (if ref != null then { ref: ref } else {}) +
@@ -76,12 +77,14 @@ local images = import 'images.jsonnet';
         actions.checkout_action,
         with=with + (if preferSshClone then { 'ssh-key': '${{ secrets.VIRKO_GITHUB_SSH_KEY }}' } else {}),
         ifClause='${{ ' + (if ifClause == null then '' else '( ' + localIfClause + ' ) && ') + " ( steps.check-binaries.outputs.sshBinaryExists == 'true' && steps.check-binaries.outputs.gitBinaryExists == 'true' ) }}",
+        timeoutMinutes=cloneTimeout,
       ) +
       base.action(
         'Check out repository code via https',
         actions.checkout_action,
         with=with,
         ifClause='${{ ' + (if ifClause == null then '' else '( ' + localIfClause + ' ) && ') + " ( steps.check-binaries.outputs.sshBinaryExists == 'false' || steps.check-binaries.outputs.gitBinaryExists == 'false' ) }}",
+        timeoutMinutes=cloneTimeout,
       ) +
       base.step('git safe directory', "command -v git && git config --global --add safe.directory '*' || true")
     else
