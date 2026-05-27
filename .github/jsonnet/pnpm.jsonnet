@@ -65,6 +65,9 @@ local yarn = import 'yarn.jsonnet';
    * @param {string} [source='gynzy'] - Registry source ('gynzy' or 'github')
    * @param {array} [pnpmInstallArgs=[]] - Additional arguments for pnpm install command
    * @param {boolean} [setupPnpm=true] - Whether to set up and install pnpm itself before installing all packages
+   * @param {boolean} [blobless=null] - Whether to perform a blobless clone (--filter=blob:none); null uses checkout default
+   * @param {number} [retryAttempts=null] - Number of additional checkout attempts on failure; null uses checkout default
+   * @param {number} [cloneTimeout=null] - Timeout for git clone operation in minutes; null uses checkout default
    * @returns {steps} - Array of step objects for the complete workflow
    */
   checkoutAndPnpm(
@@ -77,8 +80,11 @@ local yarn = import 'yarn.jsonnet';
     source='gynzy',
     pnpmInstallArgs=[],
     setupPnpm=true,
+    blobless=null,
+    retryAttempts=null,
+    cloneTimeout=null,
   )::
-    misc.checkout(ifClause=ifClause, fullClone=fullClone, ref=ref) +
+    misc.checkout(ifClause=ifClause, fullClone=fullClone, ref=ref, blobless=blobless, retryAttempts=retryAttempts, cloneTimeout=cloneTimeout) +
     (if source == 'gynzy' then yarn.setGynzyNpmToken(ifClause=ifClause, workingDirectory=workingDirectory) else []) +
     (if source == 'github' then yarn.setGithubNpmToken(ifClause=ifClause, workingDirectory=workingDirectory) else []) +
     (if cacheName == null then [] else self.fetchPnpmCache(cacheName, ifClause=ifClause, workingDirectory=workingDirectory)) +
@@ -124,9 +130,12 @@ local yarn = import 'yarn.jsonnet';
    * @param {boolean} [setupPnpm=true] - Whether to set up and install pnpm itself before installing all packages
    * @param {string} [source=null] - Registry source ('gynzy' or 'github')
    * @param {string} [runsOn=null] - GitHub Actions runner to use for the job
+   * @param {boolean} [blobless=null] - Whether to perform a blobless clone (--filter=blob:none); null uses checkout default
+   * @param {number} [retryAttempts=null] - Number of additional checkout attempts on failure; null uses checkout default
+   * @param {number} [cloneTimeout=null] - Timeout for git clone operation in minutes; null uses checkout default
    * @returns {workflows} - Complete GitHub Actions pipeline configuration
    */
-  updatePnpmCachePipeline(cacheName, appsDir='packages', image=null, useCredentials=null, setupPnpm=true, source=null, runsOn=null)::
+  updatePnpmCachePipeline(cacheName, appsDir='packages', image=null, useCredentials=null, setupPnpm=true, source=null, runsOn=null, blobless=null, retryAttempts=null, cloneTimeout=null)::
     base.pipeline(
       'update-pnpm-cache',
       [
@@ -141,6 +150,9 @@ local yarn = import 'yarn.jsonnet';
               cacheName=null,  // to populate cache we want a clean install
               setupPnpm=setupPnpm,
               source=source,
+              blobless=blobless,
+              retryAttempts=retryAttempts,
+              cloneTimeout=cloneTimeout,
             ),
             base.action(
               'setup auth',
@@ -170,9 +182,12 @@ local yarn = import 'yarn.jsonnet';
    * @param {array} [pnpmInstallArgs=[]] - Additional arguments for pnpm install
    * @param {string} [auditLevel='moderate'] - Minimum severity level to fail the job ('low', 'moderate', 'high', 'critical')
    * @param {string} [runsOn=null] - GitHub Actions runner to use for the job
+   * @param {boolean} [blobless=null] - Whether to perform a blobless clone (--filter=blob:none); null uses checkout default
+   * @param {number} [retryAttempts=null] - Number of additional checkout attempts on failure; null uses checkout default
+   * @param {number} [cloneTimeout=null] - Timeout for git clone operation in minutes; null uses checkout default
    * @returns {workflows} - Complete GitHub Actions pipeline configuration
    */
-  pnpmAuditPipeline(cacheName=null, image=null, setupPnpm=true, pnpmInstallArgs=[], auditLevel='moderate', runsOn=null)::
+  pnpmAuditPipeline(cacheName=null, image=null, setupPnpm=true, pnpmInstallArgs=[], auditLevel='moderate', runsOn=null, blobless=null, retryAttempts=null, cloneTimeout=null)::
     base.pipeline(
       'pnpm-audit',
       [
@@ -186,6 +201,9 @@ local yarn = import 'yarn.jsonnet';
               ref='${{ github.event.pull_request.head.sha }}',
               setupPnpm=setupPnpm,
               pnpmInstallArgs=pnpmInstallArgs,
+              blobless=blobless,
+              retryAttempts=retryAttempts,
+              cloneTimeout=cloneTimeout,
             ),
             base.step('pnpm-audit', 'pnpm audit --audit-level=' + auditLevel),
           ],

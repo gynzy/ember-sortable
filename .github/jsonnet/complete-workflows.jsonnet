@@ -36,10 +36,10 @@ local yarn = import 'yarn.jsonnet';
     local defaultBuildSteps = if packageManager == 'pnpm' then [base.step('build', 'pnpm run build')]
                               else [base.step('build', 'yarn build')];
     local effectiveBuildSteps = if buildSteps != null then buildSteps else defaultBuildSteps;
-    local pubJob = if packageManager == 'pnpm'
+    local publishJob = if packageManager == 'pnpm'
                    then pnpm.pnpmPublishJob(repositories=repositories, runsOn=runsOn, image=image, buildSteps=effectiveBuildSteps)
                    else yarn.yarnPublishJob(repositories=repositories, runsOn=runsOn, image=image, buildSteps=effectiveBuildSteps);
-    local prevJob = if packageManager == 'pnpm'
+    local previewJob = if packageManager == 'pnpm'
                     then pnpm.pnpmPublishPreviewJob(repositories=repositories, runsOn=runsOn, checkVersionBump=checkVersionBump, image=image, buildSteps=effectiveBuildSteps)
                     else yarn.yarnPublishPreviewJob(repositories=repositories, runsOn=runsOn, checkVersionBump=checkVersionBump, image=image, buildSteps=effectiveBuildSteps);
 
@@ -49,12 +49,12 @@ local yarn = import 'yarn.jsonnet';
     ) +
     base.pipeline(
       'publish-prod',
-      [pubJob],
+      [publishJob],
       event={ push: { branches: [branch] } },
     ) +
     base.pipeline(
       'pr',
-      [prevJob] +
+      [previewJob] +
       (if testJob != null then
          [testJob]
        else [])
