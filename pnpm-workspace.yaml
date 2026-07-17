@@ -1,3 +1,6 @@
 allowBuilds:
   core-js: true
   highlight.js: true
+
+registries:
+  "@gynzy": https://npm.pkg.github.com
